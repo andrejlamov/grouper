@@ -1,22 +1,48 @@
 var vis = function() {
-    d3.select("#name_input").style("display", "none");
-    var nodes = [{name: "Alex"}, {name: "Alex"}];
+    d3.select("#name_input")
+        .on("keypress", function(d) {
+            if(d3.event.keyCode == 13) {
+                add_node("dummy");
+            }
+        });
+    var cx = 0;
+    var cy = 0;
+    var nodes = [];
+    var alpha_target = 0.9;
+    var color = d3.scaleOrdinal(d3.schemeCategory10);
     var sim = d3.forceSimulation(nodes)
-            .force("charge", d3.forceManyBody())
-            .force("x", d3.forceX(50))
-            .force("y", d3.forceY(50))
+            .force("charge", d3.forceManyBody().strength(-70))
+            .force("x", d3.forceX(function(d) { return d["tx"];}))
+            .force("y", d3.forceY(function(d) { return d["ty"];}))
             .on("tick", tick);
+
+    function add_node(name) {
+        var new_node = {name: name, x: cx, y:cy, tx: 500, ty: 500};
+        nodes.push(new_node);
+        assign_groups();
+        sim.nodes(nodes);
+        render();
+        return new_node;
+    }
+    function assign_groups() {
+        var groups = [{x: 500, y: 500}, {x: 100, y:100}];
+        for(var i = 0; i < nodes.length; i++) {
+            var g = Math.floor(Math.random() *  groups.length);
+            nodes[i]["tx"] = groups[g]["x"];
+            nodes[i]["ty"] = groups[g]["y"];
+        }
+    }
     function tick() {
         d3.selectAll(".dot")
+            .data(nodes)
             .attr("cx", function(d) { return d["x"]; })
             .attr("cy", function(d) { return d["y"]; });
-     }
+    }
+
     var render = function () {
         var svg = d3.select("svg");
-        var cx = get_svg("width") / 2;
-        var cy = get_svg("height") / 2;
-        // sim
-        //     .force("center", d3.forceCenter(cx, cy));
+        cx = get_svg("width") / 2;
+        cy = get_svg("height") / 2;
         var circles = svg.selectAll(".dot")
                 .data(nodes);
 
@@ -25,7 +51,7 @@ var vis = function() {
                 .append("circle")
                 .attr("class", "dot")
                 .attr("r", 20)
-                .style("fill", "red")
+                .style("fill", function(d, i) { return color(i); })
                 .call(d3.drag()
                       .on("start", dragstarted)
                       .on("drag", dragged)
@@ -33,10 +59,13 @@ var vis = function() {
 
         var circles_update = circles
                 .merge(circles_enter);
+
+        tick();
+        sim.alphaTarget(alpha_target).restart();
    };
 
     function dragstarted(d) {
-        if (!d3.event.active) sim.alphaTarget(0.3).restart();
+        if (!d3.event.active) sim.alphaTarget(alpha_target).restart();
         d.fx = d.x;
         d.fy = d.y;
     }
@@ -54,7 +83,8 @@ var vis = function() {
 
     window.addEventListener("resize", render);
     window.addEventListener("load", render);
-    return {};
+    return {nodes: nodes,
+            add_node: add_node};
 }();
 
 function get_svg(style) {
@@ -64,4 +94,9 @@ function get_svg(style) {
 
 QUnit.test( "hello test", function( assert ) {
     assert.ok(!isNaN(get_svg("width")));
+});
+
+QUnit.test("Add node", function(assert) {
+    var new_node = vis.add_node("test");
+    assert.ok(new_node.hasOwnProperty("x"));
 });
