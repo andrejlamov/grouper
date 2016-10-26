@@ -17,7 +17,7 @@ var vis = function(id) {
             .data(nodes)
             .attr("cx", function(d) { return d["x"]; })
             .attr("cy", function(d) { return d["y"]; });
-    }
+    };
 
     var sim = d3.forceSimulation(nodes)
             .force("charge", d3.forceManyBody().strength(-70))
